@@ -91,15 +91,11 @@ def prompt_worker(q, server):
     while True:
         item, item_id = q.get()
         execution_start_time = time.perf_counter()
-        print(item)
-        prompt_id = item[1]
-        print("executing", item[2], prompt_id, item[3], item[4])
-        e.execute(item[2], prompt_id, item[3], item[4])
-        print("waiting for task done")
+        index, prompt_id, prompt, extra_data, extra_outputs = item
+        e.execute(prompt, prompt_id, extra_data, extra_outputs)
         q.task_done(item_id, e.outputs_ui)
         if server.client_id is not None:
             server.send_sync("executing", { "node": None, "prompt_id": prompt_id }, server.client_id)
-
         print("Prompt executed in {:.2f} seconds".format(time.perf_counter() - execution_start_time))
         gc.collect()
         comfy.model_management.soft_empty_cache()
