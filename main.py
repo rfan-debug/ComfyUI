@@ -167,7 +167,8 @@ if __name__ == "__main__":
     server.add_routes()
     hijack_progress(server)
 
-    threading.Thread(target=prompt_worker, daemon=True, args=(q, server,)).start()
+    # Run only once.
+    prompt_worker(q, server)
 
     if args.output_directory:
         output_dir = os.path.abspath(args.output_directory)
