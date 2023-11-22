@@ -28,6 +28,7 @@ if __name__ == "__main__":
     if args.cuda_device is not None:
         os.environ['CUDA_VISIBLE_DEVICES'] = str(args.cuda_device)
         print("Set cuda device to:", args.cuda_device)
+    import cuda_malloc
 
 import execution
 import server
