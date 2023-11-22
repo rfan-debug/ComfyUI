@@ -81,7 +81,7 @@ prompt_text = """
             "sampler_name": "euler",
             "scheduler": "normal",
             "seed": 8566257,
-            "steps": 20
+            "steps": 100
         }
     },
     "4": {
@@ -148,7 +148,7 @@ prompt_text = """
 if __name__ == "__main__":
     prompt = json.loads(prompt_text)
     #set the text prompt for our positive CLIPTextEncode
-    prompt["6"]["inputs"]["text"] = "masterpiece best quality man"
+    prompt["6"]["inputs"]["text"] = "masterpiece best quality man with mocking face"
 
     #set the seed for our KSampler node
     prompt["3"]["inputs"]["seed"] = 5
