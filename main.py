@@ -91,6 +91,7 @@ def prompt_worker(q, server):
     while True:
         item, item_id = q.get()
         execution_start_time = time.perf_counter()
+        print(item)
         prompt_id = item[1]
         print("executing", item[2], prompt_id, item[3], item[4])
         e.execute(item[2], prompt_id, item[3], item[4])
