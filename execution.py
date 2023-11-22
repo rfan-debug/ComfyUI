@@ -716,7 +716,7 @@ class PromptQueue:
             prompt = self.currently_running.pop(item_id)
             if len(self.history) > MAXIMUM_HISTORY_SIZE:
                 self.history.pop(next(iter(self.history)))
-            self.history[prompt[1]] = { "prompt": prompt, "outputs": {} }
+            self.history[prompt[1]] = {"prompt": prompt, "outputs": {} }
             for o in outputs:
                 self.history[prompt[1]]["outputs"][o] = outputs[o]
             self.server.queue_updated()
