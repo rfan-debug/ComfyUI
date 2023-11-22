@@ -1,12 +1,10 @@
 import comfy.options
-from utils import execute_prestartup_script, cleanup_temp, load_extra_path_config, cuda_malloc_warning, hijack_progress, \
-    prompt_worker, run
-
 comfy.options.enable_args_parsing()
+
+from start_utils import execute_prestartup_script
 
 import os
 import folder_paths
-
 
 execute_prestartup_script()
 
@@ -15,6 +13,9 @@ execute_prestartup_script()
 import asyncio
 import itertools
 import threading
+
+from utils import cleanup_temp, load_extra_path_config, cuda_malloc_warning, hijack_progress, \
+    prompt_worker, run
 
 
 from comfy.cli_args import args
