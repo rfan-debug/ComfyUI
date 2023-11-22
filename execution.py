@@ -326,6 +326,7 @@ class PromptExecutor:
         if self.server.client_id is not None:
             self.server.send_sync("execution_start", { "prompt_id": prompt_id}, self.server.client_id)
 
+        print("execute_outputs: ", execute_outputs)
         with torch.inference_mode():
             #delete cached outputs if nodes don't exist for them
             to_delete = []
@@ -348,6 +349,7 @@ class PromptExecutor:
                 del d
 
             for x in prompt:
+                print("x: ", x)
                 recursive_output_delete_if_changed(prompt, self.old_prompt, self.outputs, x)
 
             current_outputs = set(self.outputs.keys())
