@@ -705,7 +705,9 @@ class PromptQueue:
     def get(self):
         with self.not_empty:
             while len(self.queue) == 0:
+                print("queue empty, waiting")
                 self.not_empty.wait()
+            print("Non-empty, run!")
             item = heapq.heappop(self.queue)
             i = self.task_counter
             self.currently_running[i] = copy.deepcopy(item)
