@@ -14,10 +14,6 @@ import asyncio
 import itertools
 import threading
 
-from utils import cleanup_temp, load_extra_path_config, cuda_malloc_warning, hijack_progress, \
-    prompt_worker, run
-
-
 from comfy.cli_args import args
 
 if os.name == "nt":
@@ -30,6 +26,8 @@ if __name__ == "__main__":
         print("Set cuda device to:", args.cuda_device)
     import cuda_malloc
 
+from utils import cleanup_temp, load_extra_path_config, cuda_malloc_warning, hijack_progress, \
+    prompt_worker, run
 import execution
 import server
 from nodes import init_custom_nodes
