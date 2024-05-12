@@ -209,7 +209,7 @@ class PromptServer():
             else:
                 return web.Response(status=400)
 
-        def fetch_weight(post):
+        def _fetch_weight(post):
             weight_url = post.get("weight_url")
             weight_type = post.get("weight_type")
             local_file_name = post.get("local_file_name", "treat_weight.safetensors")
@@ -455,9 +455,9 @@ class PromptServer():
                 )
 
         @routes.post("/fetch_weight")
-        async def upload_weight(request):
+        async def fetch_weight(request):
             post = await request.post()
-            return fetch_weight(post)
+            return _fetch_weight(post)
 
         @routes.get("/system_stats")
         async def get_queue(request):
