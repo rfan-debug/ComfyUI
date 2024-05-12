@@ -5,11 +5,14 @@ import asyncio
 import tempfile
 import traceback
 
+import websocket
 import nodes
 import folder_paths
 import execution
 import uuid
 import urllib
+import urllib.parse
+import urllib.request
 import json
 import glob
 import struct
@@ -266,6 +269,88 @@ class PromptServer():
                     status=400,
                     text=f"Invalid weight_type: {weight_type}."
                 )
+
+        # Start: for collecting results from prompting
+        def _get_single_image(filename, subfolder, folder_type):
+            data = {"filename": filename, "subfolder": subfolder, "type": folder_type}
+            url_values = urllib.parse.urlencode(data)
+            with urllib.request.urlopen(f"http://localhost:{self.port}/view?{url_values}") as response:
+                return response.read()
+
+        def _get_history(prompt_id):
+            with urllib.request.urlopen(f"http://localhost:{self.port}/history/{prompt_id}") as response:
+                return json.loads(response.read())
+
+        def _stream_output_images_from_socket(ws, prompt_id):
+            output_images = {}
+            while True:
+                out = ws.recv()
+                if isinstance(out, str):
+                    message = json.loads(out)
+                    if message["type"] == "executing":
+                        data = message["data"]
+                        if data["node"] is None and data["prompt_id"] == prompt_id:
+                            break  # Execution is done
+                else:
+                    continue  # previews are binary data
+
+            history = _get_history(prompt_id)[prompt_id]
+            for o in history["outputs"]:
+                for node_id in history["outputs"]:
+                    node_output = history["outputs"][node_id]
+                    images_output = []
+                    if "images" in node_output:
+                        for image in node_output["images"]:
+                            image_data = _get_single_image(image["filename"], image["subfolder"], image["type"])
+                            images_output.append(image_data)
+                    output_images[node_id] = images_output
+
+            return output_images
+
+        def _queue_prompt_for_socket(prompt):
+            p = {"prompt": prompt, "client_id": self.client_id}
+            data = json.dumps(p).encode("utf-8")
+            req = urllib.request.Request(f"http://localhost:{self.port}/prompt", data=data)
+            return json.loads(urllib.request.urlopen(req).read())
+
+
+        def _get_images_from_socket(ws, prompt):
+            prompt_id = _queue_prompt_for_socket(prompt)["prompt_id"]
+            output_images = _stream_output_images_from_socket(ws, prompt_id)
+            return output_images
+
+
+        def _process_prompt(prompt, client_id) -> list:
+            ws = websocket.WebSocket()
+            try:
+                ws.connect(
+                    f"ws://localhost:{self.port}/ws?clientId={client_id}",
+                    timeout=1000, # Fixed timeouts for local connections
+                )
+                images = _get_images_from_socket(ws, prompt)
+                return images
+            except Exception as e:
+                raise e
+            finally:
+                ws.close()
+
+
+        def _api_inference(post):
+            # Upload images
+            image_upload(post)
+            # Fetch weights
+            _fetch_weight(post)
+            # process comfy_prompt to get images.
+            prompt = post.get("prompt")
+            client_id = post.get("client_id")
+            generated_images = _process_prompt(prompt=prompt, client_id=client_id)
+            return generated_images
+        # End: for collecting results from prompting
+
+        @routes.post("/api/inference")
+        async def inference(request):
+            post = await request.post()
+            return _api_inference(post)
 
         @routes.get("/health")
         async def health(request):
@@ -732,6 +817,7 @@ class PromptServer():
             await self.send(*msg)
 
     async def start(self, address, port, verbose=True, call_on_start=None):
+        self.port = port
         runner = web.AppRunner(self.app, access_log=None)
         await runner.setup()
         site = web.TCPSite(runner, address, port)
