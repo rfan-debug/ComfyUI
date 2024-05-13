@@ -375,8 +375,8 @@ class PromptServer():
                 # Upload images
                 res = _image_upload_all(
                     post,
-                    overwrite=post.get["image_overwrite"],
-                    image_upload_type=post.get("image_upload_type", None),
+                    overwrite=True,
+                    image_upload_type=None,
                 )
                 # # Fetch weights
                 # for weight_info in weights:
@@ -396,7 +396,7 @@ class PromptServer():
             except Exception as e:
                 logging.warning(e)
                 traceback.print_exc()
-                return web.json_response()
+                return web.json_response(text=str(e), status=400)
         # End: for collecting results from prompting
 
         @routes.post("/api/inference")
