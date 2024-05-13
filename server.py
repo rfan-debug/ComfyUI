@@ -362,7 +362,7 @@ class PromptServer():
                 ws.close()
 
         def _api_inference(post):
-            data = post.json()
+            data = post.data
             logging.warning(data)
             try:
                 # Extracting data from the request
