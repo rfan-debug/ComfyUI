@@ -370,9 +370,9 @@ class PromptServer():
                 weights = json.loads(post.get('weights'))
                 prompt = json.loads(post.get('prompt'))
                 client_id = post.get('client_id')
-                logging.info("weights type:", type(weights))
-                logging.info("prompt type:", type(prompt))
-                logging.info("client_id: ", client_id)
+                logging.info(f"weights type: {type(weights)}")
+                logging.info(f"prompt type: {type(prompt)}")
+                logging.info(f"client_id: {client_id}")
 
                 # Upload images
                 res = _image_upload_all(
@@ -391,6 +391,7 @@ class PromptServer():
                     if not is_success:
                         return web.json_response(status=400, text="Unsuccessful weight upload!")
 
+                logging.info("Processing the prompt and waiting for images")
                 # process comfy_prompt to get images.
                 generated_images = _process_prompt(prompt=prompt, client_id=client_id)
                 print(generated_images)
