@@ -367,12 +367,12 @@ class PromptServer():
         def _api_inference(post):
             try:
                 # Extracting data from the request
-                weights = post.get('weights')
-                prompt = post.get('prompt')
+                weights = json.loads(post.get('weights'))
+                prompt = json.loads(post.get('prompt'))
                 client_id = post.get('client_id')
-                print("weights", weights, type(weights))
-                print("prompt", prompt, type(prompt))
-                print("client_id", client_id, type(client_id))
+                logging.info("weights type:", type(weights))
+                logging.info("prompt type:", type(prompt))
+                logging.info("client_id: ", client_id)
 
                 # Upload images
                 res = _image_upload_all(
@@ -380,19 +380,20 @@ class PromptServer():
                     overwrite=True,
                     image_upload_type=None,
                 )
-                # # Fetch weights
-                # for weight_info in weights:
-                #     result_dict, is_success = _fetch_weight(
-                #         weight_url=weight_info["weight_url"],
-                #         weight_type=weight_info["weight_type"],
-                #         local_file_name=weight_info["local_file_name"],
-                #         convert_weight=weight_info["convert_weight"],
-                #     )
-                #     if not is_success:
-                #         return web.json_response(status=400, text="Unsuccessful weight upload!")
-                #
-                # # process comfy_prompt to get images.
-                # generated_images = _process_prompt(prompt=prompt, client_id=client_id)
+                # Fetch weights
+                for weight_info in weights:
+                    result_dict, is_success = _fetch_weight(
+                        weight_url=weight_info["weight_url"],
+                        weight_type=weight_info["weight_type"],
+                        local_file_name=weight_info["local_file_name"],
+                        convert_weight=weight_info["convert_weight"],
+                    )
+                    if not is_success:
+                        return web.json_response(status=400, text="Unsuccessful weight upload!")
+
+                # process comfy_prompt to get images.
+                generated_images = _process_prompt(prompt=prompt, client_id=client_id)
+                print(generated_images)
                 # return generated_images
                 return web.json_response(data=res, status=200)
             except Exception as e:
