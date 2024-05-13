@@ -363,7 +363,7 @@ class PromptServer():
 
         async def _api_inference(post):
             data = await post.json()
-
+            print(data)
             try:
                 # Extracting data from the request
                 weights = data.get('weights', [])
