@@ -370,25 +370,26 @@ class PromptServer():
             client_id = data.get('client_id', '')
 
             # Upload images
-            _image_upload_all(
+            res = _image_upload_all(
                 post.files,
                 overwrite=data.get["image_overwrite"],
                 image_upload_type=data.get("image_upload_type", None),
             )
-            # Fetch weights
-            for weight_info in weights:
-                result_dict, is_success = _fetch_weight(
-                    weight_url=weight_info["weight_url"],
-                    weight_type=weight_info["weight_type"],
-                    local_file_name=weight_info["local_file_name"],
-                    convert_weight=weight_info["convert_weight"],
-                )
-                if not is_success:
-                    return web.json_response(status=400, text="Unsuccessful weight upload!")
-
-            # process comfy_prompt to get images.
-            generated_images = _process_prompt(prompt=prompt, client_id=client_id)
-            return generated_images
+            # # Fetch weights
+            # for weight_info in weights:
+            #     result_dict, is_success = _fetch_weight(
+            #         weight_url=weight_info["weight_url"],
+            #         weight_type=weight_info["weight_type"],
+            #         local_file_name=weight_info["local_file_name"],
+            #         convert_weight=weight_info["convert_weight"],
+            #     )
+            #     if not is_success:
+            #         return web.json_response(status=400, text="Unsuccessful weight upload!")
+            # 
+            # # process comfy_prompt to get images.
+            # generated_images = _process_prompt(prompt=prompt, client_id=client_id)
+            # return generated_images
+            return web.json_response(data=res, status=200)
 
         # End: for collecting results from prompting
 
