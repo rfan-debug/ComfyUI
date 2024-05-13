@@ -363,14 +363,14 @@ class PromptServer():
 
         def _api_inference(post):
             data = post.json()
-            print(data)
+            logging.warning(data)
             try:
                 # Extracting data from the request
                 weights = data.get('weights', [])
                 prompt = data.get('prompt', {})
                 client_id = data.get('client_id', '')
 
-                print(post.files.keys())
+                logging.warning(post.files.keys())
 
                 # Upload images
                 res = _image_upload_all(
@@ -394,6 +394,7 @@ class PromptServer():
                 # return generated_images
                 return web.json_response(data=res, status=200)
             except Exception as e:
+                logging.warning(e)
                 traceback.print_exc()
                 return web.json_response()
         # End: for collecting results from prompting
