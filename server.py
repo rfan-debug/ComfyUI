@@ -369,6 +369,8 @@ class PromptServer():
             prompt = data.get('prompt', {})
             client_id = data.get('client_id', '')
 
+            print(post.files.keys())
+
             # Upload images
             res = _image_upload_all(
                 post.files,
