@@ -21,7 +21,6 @@ from PIL.PngImagePlugin import PngInfo
 from io import BytesIO
 from google.cloud import storage
 
-
 import aiohttp
 from aiohttp import web
 import logging
@@ -35,9 +34,11 @@ from app.user_manager import UserManager
 from conversion_utils import lora_convert_and_save
 from gcs_utils import download_gcs_file
 
+
 class BinaryEventTypes:
     PREVIEW_IMAGE = 1
     UNENCODED_PREVIEW_IMAGE = 2
+
 
 async def send_socket_catch_exception(function, message):
     try:
@@ -45,12 +46,14 @@ async def send_socket_catch_exception(function, message):
     except (aiohttp.ClientError, aiohttp.ClientPayloadError, ConnectionResetError) as err:
         logging.warning("send error: {}".format(err))
 
+
 @web.middleware
 async def cache_control(request: web.Request, handler):
     response: web.Response = await handler(request)
     if request.path.endswith('.js') or request.path.endswith('.css'):
         response.headers.setdefault('Cache-Control', 'no-cache')
     return response
+
 
 def create_cors_middleware(allowed_origin: str):
     @web.middleware
@@ -68,6 +71,7 @@ def create_cors_middleware(allowed_origin: str):
         return response
 
     return cors_middleware
+
 
 class PromptServer():
     def __init__(self, loop):
@@ -105,7 +109,6 @@ class PromptServer():
             "controlnet": "./models/controlnet",
         }
 
-
         @routes.get('/ws')
         async def websocket_handler(request):
             ws = web.WebSocketResponse()
@@ -121,11 +124,11 @@ class PromptServer():
 
             try:
                 # Send initial state to the new client
-                await self.send("status", { "status": self.get_queue_info(), 'sid': sid }, sid)
+                await self.send("status", {"status": self.get_queue_info(), 'sid': sid}, sid)
                 # On reconnect if we are the currently executing client send the current node
                 if self.client_id == sid and self.last_node_id is not None:
-                    await self.send("executing", { "node": self.last_node_id }, sid)
-                    
+                    await self.send("executing", {"node": self.last_node_id}, sid)
+
                 async for msg in ws:
                     if msg.type == aiohttp.WSMsgType.ERROR:
                         logging.warning('ws connection closed with exception %s' % ws.exception())
@@ -146,9 +149,9 @@ class PromptServer():
         async def get_extensions(request):
             files = glob.glob(os.path.join(
                 glob.escape(self.web_root), 'extensions/**/*.js'), recursive=True)
-            
+
             extensions = list(map(lambda f: "/" + os.path.relpath(f, self.web_root).replace("\\", "/"), files))
-            
+
             for name, dir in nodes.EXTENSION_WEB_DIRS.items():
                 files = glob.glob(os.path.join(glob.escape(dir), '**/*.js'), recursive=True)
                 extensions.extend(list(map(lambda f: "/extensions/" + urllib.parse.quote(
@@ -208,17 +211,53 @@ class PromptServer():
                     with open(filepath, "wb") as f:
                         f.write(image.file.read())
 
-                return web.json_response({"name" : filename, "subfolder": subfolder, "type": image_upload_type})
+                return web.json_response({"name": filename, "subfolder": subfolder, "type": image_upload_type})
             else:
                 return web.Response(status=400)
 
-        def _fetch_weight(post):
-            weight_url = post.get("weight_url")
-            weight_type = post.get("weight_type")
-            local_file_name = post.get("local_file_name", "treat_weight.safetensors")
-            convert_weight = post.get("convert_weight", True)
+        def _image_upload_single(image,
+                                 overwrite: bool,
+                                 image_upload_type: str,
+                                 subfolder: str = "") -> dict:
+            upload_dir, image_upload_type = get_dir_by_type(image_upload_type)
 
+            if image and image.file:
+                filename = image.filename
+                if not filename:
+                    raise RuntimeError("Filename not found in image upload.")
 
+                full_output_folder = os.path.join(upload_dir, os.path.normpath(subfolder))
+                filepath = os.path.abspath(os.path.join(full_output_folder, filename))
+
+                if os.path.commonpath((upload_dir, filepath)) != upload_dir:
+                    raise RuntimeError("Invalid common path in image upload.")
+
+                if not os.path.exists(full_output_folder):
+                    os.makedirs(full_output_folder)
+
+                split = os.path.splitext(filename)
+
+                if overwrite is not None and (overwrite == "true" or overwrite == "1"):
+                    pass
+                else:
+                    i = 1
+                    while os.path.exists(filepath):
+                        filename = f"{split[0]} ({i}){split[1]}"
+                        filepath = os.path.join(full_output_folder, filename)
+                        i += 1
+
+                with open(filepath, "wb") as f:
+                    f.write(image.file.read())
+
+                return {"name": filename, "subfolder": subfolder, "type": image_upload_type}
+            else:
+                raise RuntimeError("Invalid image or image.file .")
+
+        def _fetch_weight(weight_url: str,
+                          weight_type: str,
+                          local_file_name: str,
+                          convert_weight: bool,
+                          ) -> (dict, bool):
             if weight_type in self.weight_type2path:
                 target_path = self.weight_type2path[weight_type]
                 try:
@@ -242,33 +281,23 @@ class PromptServer():
                                 src=temp_save_path,
                                 dst=final_save_path,
                             )
-
-                        return web.json_response(
-                            data = {
-                                "weight_type": weight_type,
-                                "weight_url": weight_url,
-                                "target_path": target_path,
-                                "convert_weight": convert_weight,
-                                "download_status": "success",
-                            },
-                            status=200,
-                        )
-                except Exception as e:
-                    return web.json_response(
-                        data = {
+                        return {
                             "weight_type": weight_type,
                             "weight_url": weight_url,
                             "target_path": target_path,
                             "convert_weight": convert_weight,
-                            "download_status": f"Failed with exception: {e}",
-                        },
-                        status=400,
-                    )
+                            "download_status": "success",
+                        }, True
+                except Exception as e:
+                    return {
+                        "weight_type": weight_type,
+                        "weight_url": weight_url,
+                        "target_path": target_path,
+                        "convert_weight": convert_weight,
+                        "download_status": f"Failed with exception: {e}",
+                    }, False
             else:
-                return web.Response(
-                    status=400,
-                    text=f"Invalid weight_type: {weight_type}."
-                )
+                return {"download_status": "Invalid weight_type: {weight_type}."}, False
 
         # Start: for collecting results from prompting
         def _get_single_image(filename, subfolder, folder_type):
@@ -313,19 +342,17 @@ class PromptServer():
             req = urllib.request.Request(f"http://localhost:{self.port}/prompt", data=data)
             return json.loads(urllib.request.urlopen(req).read())
 
-
         def _get_images_from_socket(ws, prompt):
             prompt_id = _queue_prompt_for_socket(prompt)["prompt_id"]
             output_images = _stream_output_images_from_socket(ws, prompt_id)
             return output_images
 
-
-        def _process_prompt(prompt, client_id) -> list:
+        def _process_prompt(prompt, client_id) -> dict:
             ws = websocket.WebSocket()
             try:
                 ws.connect(
                     f"ws://localhost:{self.port}/ws?clientId={client_id}",
-                    timeout=1000, # Fixed timeouts for local connections
+                    timeout=1000,  # Fixed timeouts for local connections
                 )
                 images = _get_images_from_socket(ws, prompt)
                 return images
@@ -334,17 +361,37 @@ class PromptServer():
             finally:
                 ws.close()
 
-
         def _api_inference(post):
+            data = await post.json()
+
+            # Extracting data from the request
+            image_uploads = data.get('image_uploads', [])
+            weights = data.get('weights', [])
+            prompt = data.get('prompt', {})
+            client_id = data.get('client_id', '')
+
             # Upload images
-            image_upload(post)
+            for image_upload in image_uploads:
+                _image_upload_single(
+                    image=image_upload["image_gcs_uri"],
+                    overwrite=image_upload["overwrite"],
+                    image_upload_type=image_upload["image_upload_type"],
+                )
             # Fetch weights
-            _fetch_weight(post)
+            for weight_info in weights:
+                result_dict, is_success = _fetch_weight(
+                    weight_url=weight_info["weight_url"],
+                    weight_type=weight_info["weight_type"],
+                    local_file_name=weight_info["local_file_name"],
+                    convert_weight=weight_info["convert_weight"],
+                )
+                if not is_success:
+                    return web.json_response(status=400, text="Unsuccessful weight upload!")
+
             # process comfy_prompt to get images.
-            prompt = post.get("prompt")
-            client_id = post.get("client_id")
             generated_images = _process_prompt(prompt=prompt, client_id=client_id)
             return generated_images
+
         # End: for collecting results from prompting
 
         @routes.post("/api/inference")
@@ -360,7 +407,6 @@ class PromptServer():
         async def upload_image(request):
             post = await request.post()
             return image_upload(post)
-
 
         @routes.post("/upload/mask")
         async def upload_mask(request):
@@ -392,7 +438,7 @@ class PromptServer():
                 if os.path.isfile(file):
                     with Image.open(file) as original_pil:
                         metadata = PngInfo()
-                        if hasattr(original_pil,'text'):
+                        if hasattr(original_pil, 'text'):
                             for key in original_pil.text:
                                 metadata.add_text(key, original_pil.text[key])
                         original_pil = original_pil.convert('RGBA')
@@ -409,7 +455,7 @@ class PromptServer():
         async def view_image(request):
             if "filename" in request.rel_url.query:
                 filename = request.rel_url.query["filename"]
-                filename,output_dir = folder_paths.annotated_filepath(filename)
+                filename, output_dir = folder_paths.annotated_filepath(filename)
 
                 # validation for security: prevent accessing arbitrary path
                 if filename[0] == '/' or '..' in filename:
@@ -508,7 +554,7 @@ class PromptServer():
             safetensors_path = folder_paths.get_full_path(folder_name, filename)
             if safetensors_path is None:
                 return web.Response(status=404)
-            out = comfy.utils.safetensors_header(safetensors_path, max_size=1024*1024)
+            out = comfy.utils.safetensors_header(safetensors_path, max_size=1024 * 1024)
             if out is None:
                 return web.Response(status=404)
             dt = json.loads(out)
@@ -542,7 +588,17 @@ class PromptServer():
         @routes.post("/fetch_weight")
         async def fetch_weight(request):
             post = await request.post()
-            return _fetch_weight(post)
+            result_dict, is_success = _fetch_weight(
+                weight_url=post.get("weight_url"),
+                weight_type=post.get("weight_type"),
+                local_file_name=post.get("local_file_name"),
+                convert_weight=post.get("convert_weight", True),
+            )
+
+            if is_success:
+                return web.json_response(data=result_dict, status=200)
+            else:
+                return web.json_response(data=result_dict, status=400)
 
         @routes.get("/system_stats")
         async def get_queue(request):
@@ -579,11 +635,14 @@ class PromptServer():
             info = {}
             info['input'] = obj_class.INPUT_TYPES()
             info['output'] = obj_class.RETURN_TYPES
-            info['output_is_list'] = obj_class.OUTPUT_IS_LIST if hasattr(obj_class, 'OUTPUT_IS_LIST') else [False] * len(obj_class.RETURN_TYPES)
+            info['output_is_list'] = obj_class.OUTPUT_IS_LIST if hasattr(obj_class, 'OUTPUT_IS_LIST') else [
+                                                                                                               False] * len(
+                obj_class.RETURN_TYPES)
             info['output_name'] = obj_class.RETURN_NAMES if hasattr(obj_class, 'RETURN_NAMES') else info['output']
             info['name'] = node_class
-            info['display_name'] = nodes.NODE_DISPLAY_NAME_MAPPINGS[node_class] if node_class in nodes.NODE_DISPLAY_NAME_MAPPINGS.keys() else node_class
-            info['description'] = obj_class.DESCRIPTION if hasattr(obj_class,'DESCRIPTION') else ''
+            info['display_name'] = nodes.NODE_DISPLAY_NAME_MAPPINGS[
+                node_class] if node_class in nodes.NODE_DISPLAY_NAME_MAPPINGS.keys() else node_class
+            info['description'] = obj_class.DESCRIPTION if hasattr(obj_class, 'DESCRIPTION') else ''
             info['category'] = 'sd'
             if hasattr(obj_class, 'OUTPUT_NODE') and obj_class.OUTPUT_NODE == True:
                 info['output_node'] = True
@@ -608,10 +667,6 @@ class PromptServer():
         @routes.get("/available_models")
         async def get_available_models(request):
             out = {}
-
-
-
-
 
         @routes.get("/object_info/{node_class}")
         async def get_object_info_node(request):
@@ -646,7 +701,7 @@ class PromptServer():
             logging.info("got prompt")
             resp_code = 200
             out_string = ""
-            json_data =  await request.json()
+            json_data = await request.json()
             json_data = self.trigger_on_prompt(json_data)
 
             if "number" in json_data:
@@ -682,7 +737,7 @@ class PromptServer():
 
         @routes.post("/queue")
         async def post_queue(request):
-            json_data =  await request.json()
+            json_data = await request.json()
             if "clear" in json_data:
                 if json_data["clear"]:
                     self.prompt_queue.wipe_queue()
@@ -712,7 +767,7 @@ class PromptServer():
 
         @routes.post("/history")
         async def post_history(request):
-            json_data =  await request.json()
+            json_data = await request.json()
             if "clear" in json_data:
                 if json_data["clear"]:
                     self.prompt_queue.wipe_history()
@@ -722,7 +777,7 @@ class PromptServer():
                     self.prompt_queue.delete_history_item(id_to_delete)
 
             return web.Response(status=200)
-        
+
     def add_routes(self):
         self.user_manager.add_routes(self.routes)
         self.app.add_routes(self.routes)
@@ -809,7 +864,7 @@ class PromptServer():
             self.messages.put_nowait, (event, data, sid))
 
     def queue_updated(self):
-        self.send_sync("status", { "status": self.get_queue_info() })
+        self.send_sync("status", {"status": self.get_queue_info()})
 
     async def publish_loop(self):
         while True:
