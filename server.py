@@ -372,8 +372,6 @@ class PromptServer():
                 prompt = post.get('prompt', {})
                 client_id = post.get('client_id', '')
 
-                logging.warning(post.files.keys())
-
                 # Upload images
                 res = _image_upload_all(
                     post,
