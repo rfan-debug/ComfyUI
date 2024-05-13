@@ -361,7 +361,7 @@ class PromptServer():
             finally:
                 ws.close()
 
-        def _api_inference(post):
+        async def _api_inference(post):
             data = await post.json()
 
             # Extracting data from the request
@@ -385,7 +385,7 @@ class PromptServer():
             #     )
             #     if not is_success:
             #         return web.json_response(status=400, text="Unsuccessful weight upload!")
-            # 
+            #
             # # process comfy_prompt to get images.
             # generated_images = _process_prompt(prompt=prompt, client_id=client_id)
             # return generated_images
