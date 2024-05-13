@@ -367,12 +367,12 @@ class PromptServer():
         def _api_inference(post):
             try:
                 # Extracting data from the request
-                weights = post.get('weights', [])
-                prompt = post.get('prompt', {})
-                client_id = post.get('client_id', '')
-                print("weights", weights)
-                print("prompt", prompt)
-                print("client_id", client_id)
+                weights = post.get('weights')
+                prompt = post.get('prompt')
+                client_id = post.get('client_id')
+                print("weights", weights, type(weights))
+                print("prompt", prompt, type(prompt))
+                print("client_id", client_id, type(client_id))
 
                 # Upload images
                 res = _image_upload_all(
