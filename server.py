@@ -215,13 +215,16 @@ class PromptServer():
             else:
                 return web.Response(status=400)
 
-        def _image_upload_all(image_files,
+        def _image_upload_all(post,
                               overwrite: bool,
                               image_upload_type: str | None,
                               subfolder: str = "") -> dict:
             upload_dir, image_upload_type = get_dir_by_type(image_upload_type)
             responses = []
-            for filename, image_file_data in image_files.items():
+
+            files = post.getall("files")
+            for file in files:
+                filename = file.filename
 
                 if not filename:
                     raise RuntimeError("Filename not found in image upload.")
@@ -247,7 +250,7 @@ class PromptServer():
                         i += 1
 
                 with open(filepath, "wb") as f:
-                    f.write(image_file_data.read())
+                    f.write(file.file.read())
 
                 responses.append({"name": filename, "subfolder": subfolder, "type": image_upload_type})
 
@@ -373,7 +376,7 @@ class PromptServer():
 
                 # Upload images
                 res = _image_upload_all(
-                    post.files,
+                    post,
                     overwrite=post.get["image_overwrite"],
                     image_upload_type=post.get("image_upload_type", None),
                 )
