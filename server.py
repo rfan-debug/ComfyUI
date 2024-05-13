@@ -346,6 +346,7 @@ class PromptServer():
             return json.loads(urllib.request.urlopen(req).read())
 
         def _get_images_from_socket(ws, prompt):
+            print("getting images back from prompt")
             prompt_id = _queue_prompt_for_socket(prompt)["prompt_id"]
             output_images = _stream_output_images_from_socket(ws, prompt_id)
             return output_images
@@ -353,6 +354,7 @@ class PromptServer():
         def _process_prompt(prompt, client_id) -> dict:
             ws = websocket.WebSocket()
             try:
+                print("connecting to socket")
                 ws.connect(
                     f"ws://localhost:{self.port}/ws?clientId={client_id}",
                     timeout=1000,  # Fixed timeouts for local connections
