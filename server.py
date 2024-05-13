@@ -215,14 +215,14 @@ class PromptServer():
             else:
                 return web.Response(status=400)
 
-        def _image_upload_single(image,
-                                 overwrite: bool,
-                                 image_upload_type: str,
-                                 subfolder: str = "") -> dict:
+        def _image_upload_all(image_files,
+                              overwrite: bool,
+                              image_upload_type: str | None,
+                              subfolder: str = "") -> dict:
             upload_dir, image_upload_type = get_dir_by_type(image_upload_type)
+            responses = []
+            for filename, image_file_data in image_files.items():
 
-            if image and image.file:
-                filename = image.filename
                 if not filename:
                     raise RuntimeError("Filename not found in image upload.")
 
@@ -247,11 +247,11 @@ class PromptServer():
                         i += 1
 
                 with open(filepath, "wb") as f:
-                    f.write(image.file.read())
+                    f.write(image_file_data.read())
 
-                return {"name": filename, "subfolder": subfolder, "type": image_upload_type}
-            else:
-                raise RuntimeError("Invalid image or image.file .")
+                responses.append({"name": filename, "subfolder": subfolder, "type": image_upload_type})
+
+            return {"image_uploads": responses}
 
         def _fetch_weight(weight_url: str,
                           weight_type: str,
@@ -365,18 +365,16 @@ class PromptServer():
             data = await post.json()
 
             # Extracting data from the request
-            image_uploads = data.get('image_uploads', [])
             weights = data.get('weights', [])
             prompt = data.get('prompt', {})
             client_id = data.get('client_id', '')
 
             # Upload images
-            for image_upload in image_uploads:
-                _image_upload_single(
-                    image=image_upload["image_gcs_uri"],
-                    overwrite=image_upload["overwrite"],
-                    image_upload_type=image_upload["image_upload_type"],
-                )
+            _image_upload_all(
+                post.files,
+                overwrite=data.get["image_overwrite"],
+                image_upload_type=data.get("image_upload_type", None),
+            )
             # Fetch weights
             for weight_info in weights:
                 result_dict, is_success = _fetch_weight(
