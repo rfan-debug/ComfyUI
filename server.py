@@ -361,8 +361,8 @@ class PromptServer():
             finally:
                 ws.close()
 
-        async def _api_inference(post):
-            data = await post.json()
+        def _api_inference(post):
+            data = post.json()
             print(data)
             try:
                 # Extracting data from the request
