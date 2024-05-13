@@ -240,7 +240,7 @@ class PromptServer():
 
                 split = os.path.splitext(filename)
 
-                if overwrite is not None and (overwrite == "true" or overwrite == "1"):
+                if overwrite:
                     pass
                 else:
                     i = 1
