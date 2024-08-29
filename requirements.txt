@@ -18,3 +18,7 @@ psutil
 kornia>=0.7.1
 spandrel
 soundfile
+
+# treat-ai specific terms
+google-cloud-storage
+diffusers

@@ -14,7 +14,9 @@ def queue_prompt(prompt):
     p = {"prompt": prompt, "client_id": client_id}
     data = json.dumps(p).encode('utf-8')
     req =  urllib.request.Request("http://{}/prompt".format(server_address), data=data)
-    return json.loads(urllib.request.urlopen(req).read())
+    response = urllib.request.urlopen(req)
+    json_response = json.loads(response.read())
+    return json_response
 
 def get_image(filename, subfolder, folder_type):
     data = {"filename": filename, "subfolder": subfolder, "type": folder_type}
@@ -141,23 +143,25 @@ prompt_text = """
 }
 """
 
-prompt = json.loads(prompt_text)
-#set the text prompt for our positive CLIPTextEncode
-prompt["6"]["inputs"]["text"] = "masterpiece best quality man"
 
-#set the seed for our KSampler node
-prompt["3"]["inputs"]["seed"] = 5
+if __name__ == "__main__":
+    prompt = json.loads(prompt_text)
+    #set the text prompt for our positive CLIPTextEncode
+    prompt["6"]["inputs"]["text"] = "masterpiece best quality man"
 
-ws = websocket.WebSocket()
-ws.connect("ws://{}/ws?clientId={}".format(server_address, client_id))
-images = get_images(ws, prompt)
+    #set the seed for our KSampler node
+    prompt["3"]["inputs"]["seed"] = 5
 
-#Commented out code to display the output images:
+    ws = websocket.WebSocket()
+    ws.connect("ws://{}/ws?clientId={}".format(server_address, client_id))
+    images = get_images(ws, prompt)
 
-# for node_id in images:
-#     for image_data in images[node_id]:
-#         from PIL import Image
-#         import io
-#         image = Image.open(io.BytesIO(image_data))
-#         image.show()
+    #Commented out code to display the output images:
+
+    for node_id in images:
+        for image_data in images[node_id]:
+            from PIL import Image
+            import io
+            image = Image.open(io.BytesIO(image_data))
+            image.show()
 
