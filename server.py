@@ -1,6 +1,8 @@
 import os
+import shutil
 import sys
 import asyncio
+import tempfile
 import traceback
 
 import nodes
@@ -15,6 +17,8 @@ import ssl
 from PIL import Image, ImageOps
 from PIL.PngImagePlugin import PngInfo
 from io import BytesIO
+from google.cloud import storage
+
 
 import aiohttp
 from aiohttp import web
@@ -27,9 +31,13 @@ import comfy.model_management
 import node_helpers
 from app.frontend_management import FrontendManager
 from app.user_manager import UserManager
+
 from model_filemanager import download_model, DownloadModelStatus
 from typing import Optional
 from api_server.routes.internal.internal_routes import InternalRoutes
+from conversion_utils import lora_convert_and_save
+from gcs_utils import download_gcs_file
+
 
 class BinaryEventTypes:
     PREVIEW_IMAGE = 1
@@ -115,6 +123,13 @@ class PromptServer():
         self.client_id = None
 
         self.on_prompt_handlers = []
+        self.gcs_client = storage.Client()
+        self.weight_type2path = {
+            "lora": "./models/loras",
+            "base": "./models/checkpoints",
+            "controlnet": "./models/controlnet",
+        }
+
 
         @routes.get('/ws')
         async def websocket_handler(request):
@@ -253,6 +268,68 @@ class PromptServer():
                 return web.json_response({"name" : filename, "subfolder": subfolder, "type": image_upload_type})
             else:
                 return web.Response(status=400)
+
+        def fetch_weight(post):
+            weight_url = post.get("weight_url")
+            weight_type = post.get("weight_type")
+            local_file_name = post.get("local_file_name", "treat_weight.safetensors")
+            convert_weight = post.get("convert_weight", True)
+
+
+            if weight_type in self.weight_type2path:
+                target_path = self.weight_type2path[weight_type]
+                try:
+                    with tempfile.TemporaryDirectory() as temp_dir:
+                        temp_save_path = os.path.join(temp_dir, local_file_name)
+                        final_save_path = os.path.join(target_path, local_file_name)
+                        logging.info(f"Downloading file to {temp_save_path}.")
+                        logging.info(f"Final save path to {final_save_path}")
+                        download_gcs_file(
+                            gcs_client=self.gcs_client,
+                            uri=weight_url,
+                            target_file_path=temp_save_path,
+                        )
+                        if weight_type == "lora" and convert_weight:
+                            lora_convert_and_save(
+                                input_lora=temp_save_path,
+                                output_lora=final_save_path,
+                            )
+                        else:
+                            shutil.move(
+                                src=temp_save_path,
+                                dst=final_save_path,
+                            )
+
+                        return web.json_response(
+                            data = {
+                                "weight_type": weight_type,
+                                "weight_url": weight_url,
+                                "target_path": target_path,
+                                "convert_weight": convert_weight,
+                                "download_status": "success",
+                            },
+                            status=200,
+                        )
+                except Exception as e:
+                    return web.json_response(
+                        data = {
+                            "weight_type": weight_type,
+                            "weight_url": weight_url,
+                            "target_path": target_path,
+                            "convert_weight": convert_weight,
+                            "download_status": f"Failed with exception: {e}",
+                        },
+                        status=400,
+                    )
+            else:
+                return web.Response(
+                    status=400,
+                    text=f"Invalid weight_type: {weight_type}."
+                )
+
+        @routes.get("/health")
+        async def health(request):
+            return web.Response(status=200, text="Healthy")
 
         @routes.post("/upload/image")
         async def upload_image(request):
@@ -414,6 +491,34 @@ class PromptServer():
                 return web.Response(status=404)
             return web.json_response(dt["__metadata__"])
 
+        @routes.get("/view_file/{folder_name}")
+        async def view_file(request):
+            folder_name = request.match_info.get("folder_name", None)
+            if folder_name is None:
+                return web.Response(status=404, text="Request pass in a valid folder name")
+            if not "filename" in request.rel_url.query:
+                return web.Response(status=404, text="Require filename in params")
+
+            filename = request.rel_url.query["filename"]
+            if not filename.endswith(".safetensors"):
+                return web.Response(status=404, text="target file isn't a .safetensors")
+
+            safetensors_path = folder_paths.get_full_path(folder_name, filename)
+            if safetensors_path is None:
+                return web.Response(
+                    status=404,
+                    text="File not found")
+            else:
+                return web.Response(
+                    status=200,
+                    text=f"File Exists: {folder_name}/{filename}"
+                )
+
+        @routes.post("/fetch_weight")
+        async def upload_weight(request):
+            post = await request.post()
+            return fetch_weight(post)
+
         @routes.get("/system_stats")
         async def system_stats(request):
             device = comfy.model_management.get_torch_device()
@@ -488,6 +593,14 @@ class PromptServer():
                     logging.error(f"[ERROR] An error occurred while retrieving information for the '{x}' node.")
                     logging.error(traceback.format_exc())
             return web.json_response(out)
+
+        @routes.get("/available_models")
+        async def get_available_models(request):
+            out = {}
+
+
+
+
 
         @routes.get("/object_info/{node_class}")
         async def get_object_info_node(request):
