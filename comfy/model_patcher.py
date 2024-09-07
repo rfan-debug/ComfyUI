@@ -96,9 +96,9 @@ class ModelPatcher:
         self.model = model
         if not hasattr(self.model, 'device'):
             logging.debug("Model doesn't have a device attribute.")
-            self.model.device = offload_device
+            self.model.to(offload_device)
         elif self.model.device is None:
-            self.model.device = offload_device
+            self.model.to(offload_device)
 
         self.patches = {}
         self.backup = {}
@@ -409,7 +409,8 @@ class ModelPatcher:
                 mem_counter = self.model_size()
 
         self.model.lowvram_patch_counter += patch_counter
-        self.model.device = device_to
+        self.model.to(device_to)
+        # self.model.device = device_to
         self.model.model_loaded_weight_memory = mem_counter
 
     def patch_model(self, device_to=None, lowvram_model_memory=0, load_weights=True, force_patch_weights=False):
@@ -449,7 +450,8 @@ class ModelPatcher:
 
             if device_to is not None:
                 self.model.to(device_to)
-                self.model.device = device_to
+                # model.device doesn't have a setter
+                # self.model.device = device_to
             self.model.model_loaded_weight_memory = 0
 
             for m in self.model.modules():
