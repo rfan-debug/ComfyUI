@@ -96,9 +96,9 @@ class ModelPatcher:
         self.model = model
         if not hasattr(self.model, 'device'):
             logging.debug("Model doesn't have a device attribute.")
-            self.model.to(offload_device)
+            self.model.device = offload_device
         elif self.model.device is None:
-            self.model.to(offload_device)
+            self.model.device = offload_device
 
         self.patches = {}
         self.backup = {}
