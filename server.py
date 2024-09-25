@@ -326,6 +326,10 @@ class PromptServer():
             else:
                 return web.Response(status=400)
 
+        @routes.get("/health")
+        async def health(request):
+            return web.Response(status=200, text="Healthy")
+
         @routes.post("/upload/image")
         async def upload_image(request):
             post = await request.post()

@@ -453,7 +453,8 @@ class ModelPatcher:
 
             if device_to is not None:
                 self.model.to(device_to)
-                self.model.device = device_to
+                # model.device doesn't have a setter
+                # self.model.device = device_to
             self.model.model_loaded_weight_memory = 0
 
             for m in self.model.modules():
