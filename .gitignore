@@ -21,3 +21,7 @@ venv/
 *.log
 web_custom_versions/
 .DS_Store
+
+!/custom_nodes/comfyui_controlnet_aux
+!/custom_nodes/comfyui_eesahes_nodes
+!/custom_nodes/masquerade_nodes_comfyui
