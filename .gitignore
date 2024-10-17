@@ -7,6 +7,9 @@ __pycache__/
 /temp/
 /custom_nodes/
 !custom_nodes/example_node.py.example
+!/custom_nodes/comfyui_controlnet_aux
+!/custom_nodes/comfyui_eesahes_nodes
+!/custom_nodes/masquerade_nodes_comfyui
 extra_model_paths.yaml
 /.vs
 .vscode/
@@ -22,6 +25,4 @@ venv/
 web_custom_versions/
 .DS_Store
 
-!/custom_nodes/comfyui_controlnet_aux
-!/custom_nodes/comfyui_eesahes_nodes
-!/custom_nodes/masquerade_nodes_comfyui
+
