@@ -95,6 +95,17 @@ def is_intel_xpu():
             return True
     return False
 
+def get_torch_device_by_detection():
+    if torch.cuda.is_available():
+        logging.info(f"CUDA device detected: {torch.cuda.current_device()}")
+        return torch.device(torch.cuda.current_device())
+    elif torch.backends.mps.is_available():
+        logging.info(f"MPS device detected.")
+        return torch.device("cpu")
+    elif torch.cpu.is_available():
+        logging.info(f"CPU device detected.")
+        return torch.device("cpu")
+
 def get_torch_device():
     global directml_enabled
     global cpu_state
@@ -109,7 +120,7 @@ def get_torch_device():
         if is_intel_xpu():
             return torch.device("xpu", torch.xpu.current_device())
         else:
-            return torch.device(torch.cuda.current_device())
+            return get_torch_device_by_detection()
 
 def get_total_memory(dev=None, torch_total_too=False):
     global directml_enabled
