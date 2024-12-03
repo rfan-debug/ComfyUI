@@ -18,7 +18,7 @@ folder_names_and_paths["configs"] = ([os.path.join(models_dir, "configs")], [".y
 
 folder_names_and_paths["loras"] = ([os.path.join(models_dir, "loras")], supported_pt_extensions)
 folder_names_and_paths["vae"] = ([os.path.join(models_dir, "vae")], supported_pt_extensions)
-folder_names_and_paths["clip"] = ([os.path.join(models_dir, "clip")], supported_pt_extensions)
+folder_names_and_paths["text_encoders"] = ([os.path.join(models_dir, "text_encoders"), os.path.join(models_dir, "clip")], supported_pt_extensions)
 folder_names_and_paths["diffusion_models"] = ([os.path.join(models_dir, "unet"), os.path.join(models_dir, "diffusion_models")], supported_pt_extensions)
 folder_names_and_paths["clip_vision"] = ([os.path.join(models_dir, "clip_vision")], supported_pt_extensions)
 folder_names_and_paths["style_models"] = ([os.path.join(models_dir, "style_models")], supported_pt_extensions)
@@ -81,7 +81,8 @@ extension_mimetypes_cache = {
 }
 
 def map_legacy(folder_name: str) -> str:
-    legacy = {"unet": "diffusion_models"}
+    legacy = {"unet": "diffusion_models",
+              "clip": "text_encoders"}
     return legacy.get(folder_name, folder_name)
 
 if not os.path.exists(input_directory):
@@ -234,8 +235,12 @@ def recursive_search(directory: str, excluded_dir_names: list[str] | None=None) 
     for dirpath, subdirs, filenames in os.walk(directory, followlinks=True, topdown=True):
         subdirs[:] = [d for d in subdirs if d not in excluded_dir_names]
         for file_name in filenames:
-            relative_path = os.path.relpath(os.path.join(dirpath, file_name), directory)
-            result.append(relative_path)
+            try:
+                relative_path = os.path.relpath(os.path.join(dirpath, file_name), directory)
+                result.append(relative_path)
+            except:
+                logging.warning(f"Warning: Unable to access {file_name}. Skipping this file.")
+                continue
 
         for d in subdirs:
             path: str = os.path.join(dirpath, d)
