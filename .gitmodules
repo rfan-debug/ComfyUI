@@ -1,3 +1,7 @@
 [submodule "custom_nodes/comfyui_controlnet_aux"]
 	path = custom_nodes/comfyui_controlnet_aux
 	url = https://github.com/Fannovel16/comfyui_controlnet_aux.git
+
+[submodule "custom_nodes/comfyui_fluxtapoz"]
+	path = custom_nodes/comfyui_fluxtapoz
+	url = https://github.com/logtd/ComfyUI-Fluxtapoz.git
