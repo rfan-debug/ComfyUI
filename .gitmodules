@@ -4,3 +4,6 @@
 [submodule "custom_nodes/comfyui_fluxtapoz"]
 	path = custom_nodes/comfyui_fluxtapoz
 	url = https://github.com/logtd/ComfyUI-Fluxtapoz.git
+[submodule "comfy/custom_nodes/comfyui_depth_pro"]
+	path = comfy/custom_nodes/comfyui_depth_pro
+	url = https://github.com/spacepxl/ComfyUI-Depth-Pro.git
