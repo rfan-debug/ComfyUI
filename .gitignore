@@ -13,6 +13,7 @@ __pycache__/
 !custom_nodes/comfyui_fluxtapoz
 !custom_nodes/comfyui_depth_pro
 !custom_nodes/comfyui_*
+!custom_nodes/controlnet_apply_advanced_masked/
 !custom_nodes/typeface_nodes.py
 extra_model_paths.yaml
 /.vs
