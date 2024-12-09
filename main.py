@@ -71,6 +71,7 @@ if os.name == "nt":
 if __name__ == "__main__":
     if args.cuda_device is not None:
         os.environ['CUDA_VISIBLE_DEVICES'] = str(args.cuda_device)
+        os.environ['HIP_VISIBLE_DEVICES'] = str(args.cuda_device)
         logging.info("Set cuda device to: {}".format(args.cuda_device))
 
     if args.deterministic:
@@ -153,7 +154,6 @@ def prompt_worker(q, server):
         if need_gc:
             current_time = time.perf_counter()
             if (current_time - last_gc_collect) > gc_collect_interval:
-                comfy.model_management.cleanup_models()
                 gc.collect()
                 comfy.model_management.soft_empty_cache()
                 last_gc_collect = current_time
