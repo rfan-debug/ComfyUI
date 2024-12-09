@@ -764,19 +764,3 @@ def load_t2i_adapter(t2i_data, model_options={}): #TODO: model_options
         logging.debug("t2i unexpected {}".format(unexpected))
 
     return T2IAdapter(model_ad, model_ad.input_channels, compression_ratio, upscale_algorithm)
-
-# Added for compatibility @rfan-debug
-class ControlNetSD35(ControlNet):
-    def pre_run(self, model, percent_to_timestep_function):
-        if self.control_model.double_y_emb:
-            missing, unexpected = self.control_model.orig_y_embedder.load_state_dict(model.diffusion_model.y_embedder.state_dict(), strict=False)
-        else:
-            missing, unexpected = self.control_model.x_embedder.load_state_dict(model.diffusion_model.x_embedder.state_dict(), strict=False)
-        super().pre_run(model, percent_to_timestep_function)
-
-    def copy(self):
-        c = ControlNetSD35(None, global_average_pooling=self.global_average_pooling, load_device=self.load_device, manual_cast_dtype=self.manual_cast_dtype)
-        c.control_model = self.control_model
-        c.control_model_wrapped = self.control_model_wrapped
-        self.copy_to(c)
-        return c
