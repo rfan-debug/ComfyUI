@@ -10,3 +10,6 @@
 [submodule "custom_nodes/comfyui_depth_pro"]
 	path = custom_nodes/comfyui_depth_pro
 	url = https://github.com/rfan-debug/ComfyUI-Depth-Pro.git
+[submodule "custom_nodes/comfyui_sam2"]
+	path = custom_nodes/comfyui_sam2
+	url = https://github.com/neverbiasu/ComfyUI-SAM2.git
